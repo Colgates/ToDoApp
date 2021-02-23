@@ -9,6 +9,7 @@
 
 import UIKit
 
+
 class ViewController: UIViewController {
     
     var notes = [Notes]()
@@ -48,6 +49,8 @@ class ViewController: UIViewController {
             collectionView.dequeueConfiguredReusableCell(using: registration, for: indexPath, item: note)
         }
     }
+    
+    
     func setupSubviews() {
         view.addSubview(collectionView)
         NSLayoutConstraint.activate([collectionView.topAnchor.constraint(equalTo: view.topAnchor),
