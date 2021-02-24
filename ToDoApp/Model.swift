@@ -10,7 +10,7 @@ import Foundation
 enum Section {
     case main
 }
-
-struct Notes: Hashable {
-    var title: String
-}
+//
+//struct ToDoListItem: Hashable {
+//    var title: String
+//}

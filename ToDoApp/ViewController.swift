@@ -8,14 +8,35 @@
 
 
 import UIKit
+import RealmSwift
 
+class ToDoListItem: Object {
+    @objc dynamic var title: String = ""
+    @objc dynamic var itemText: String = ""
+}
 
 class ViewController: UIViewController {
     
-    var notes = [Notes]()
+    let realm = try! Realm()
+    
+    var notes = [ToDoListItem]()
     
     private let collectionView: UICollectionView = {
-        let configuration = UICollectionLayoutListConfiguration(appearance: .insetGrouped)
+        
+        var configuration = UICollectionLayoutListConfiguration(appearance: .grouped)
+        
+        configuration.trailingSwipeActionsConfigurationProvider = { indexPath in
+            let del = UIContextualAction(style: .destructive, title: "Delete") { action, view, completion in
+                
+                
+                
+                
+                completion(true)
+            }
+            return UISwipeActionsConfiguration(actions: [del])
+        }
+        
+        
         let layout = UICollectionViewCompositionalLayout.list(using: configuration)
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .systemGroupedBackground
@@ -23,29 +44,31 @@ class ViewController: UIViewController {
         return collectionView
     }()
     
-    var dataSource: UICollectionViewDiffableDataSource<Section, Notes>!
+    var dataSource: UICollectionViewDiffableDataSource<Section, ToDoListItem>!
     
     override func viewDidLoad() {
         super.viewDidLoad()
-              
+        
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(didTapAddButton))
         title = "ToDoList"
-        
+        navigationController?.navigationBar.prefersLargeTitles = true
         collectionView.delegate = self
         
         setupCollectionView()
         setupSubviews()
+        
+        loadObjects()
         updateDataSource()
     }
     
     func setupCollectionView() {
-        let registration = UICollectionView.CellRegistration<UICollectionViewListCell, Notes> { (cell, indexPath, note) in
+        let registration = UICollectionView.CellRegistration<UICollectionViewListCell, ToDoListItem> { (cell, indexPath, note) in
             var content = cell.defaultContentConfiguration()
-            content.text = note.title
+            content.text = note.itemText
             cell.contentConfiguration = content
         }
         
-        dataSource = UICollectionViewDiffableDataSource<Section, Notes>(collectionView: collectionView) { (collectionView, indexPath, note) -> UICollectionViewCell? in
+        dataSource = UICollectionViewDiffableDataSource<Section, ToDoListItem>(collectionView: collectionView) { (collectionView, indexPath, note) -> UICollectionViewCell? in
             collectionView.dequeueConfiguredReusableCell(using: registration, for: indexPath, item: note)
         }
     }
@@ -61,11 +84,26 @@ class ViewController: UIViewController {
     
     func updateDataSource() {
         
-        var snapshot = NSDiffableDataSourceSnapshot<Section, Notes>()
+        var snapshot = NSDiffableDataSourceSnapshot<Section, ToDoListItem>()
         snapshot.appendSections([.main])
         snapshot.appendItems(notes)
         
         dataSource.apply(snapshot,animatingDifferences: true)
+    }
+    
+    func loadObjects() {
+        notes = realm.objects(ToDoListItem.self).map({ $0 })
+    }
+    
+    func saveObject(_ object: Object) {
+        do {
+            try! realm.write {
+                realm.add(object)
+            }
+            //        } catch {
+            //        print("Error while saving object")
+            //        }
+        }
     }
     
     @objc private func didTapAddButton() {
@@ -78,7 +116,9 @@ class ViewController: UIViewController {
             let noteTextField = alert.textFields![0] as UITextField
             if let noteText = noteTextField.text {
                 if noteText != "" {
-                    let note = Notes(title: noteText)
+                    let note = ToDoListItem()
+                    note.itemText = noteText
+                    self.saveObject(note)
                     self.notes.append(note)
                     self.updateDataSource()
                 }
@@ -92,9 +132,63 @@ class ViewController: UIViewController {
 //MARK: - TableView Delegate
 extension ViewController: UICollectionViewDelegate {
     
-    
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         collectionView.deselectItem(at: indexPath, animated: true)
+        
+        
+        let actionSheet = UIAlertController(title: "", message: "", preferredStyle: .actionSheet)
+        actionSheet.addAction(UIAlertAction(title: "Delete", style: .destructive, handler: { action in
+            print("Delete")
+            
+            let item = self.notes[indexPath.row]
+            do {
+                try self.realm.write {
+                    self.realm.delete(item)
+                }
+            } catch  {
+                
+            }
+            self.loadObjects()
+            self.updateDataSource()
+            
+            
+        }))
+        
+        actionSheet.addAction(UIAlertAction(title: "Edit", style: .default, handler: { action in
+            print("Edit")
+            
+            let item = ToDoListItem()
+            
+            //            item.itemText = self.notes[indexPath.row].itemText
+            
+            item.itemText = self.notes[indexPath.row].itemText
+            
+            let alert = UIAlertController(title: "Edit", message: nil, preferredStyle: .alert)
+            
+            alert.addTextField { (textField:UITextField) in
+                textField.text = item.itemText
+            }
+            
+            let saveAction = UIAlertAction(title: "Save", style: .default, handler: { (action) in
+                let noteTextField = alert.textFields![0] as UITextField
+                if let noteText = noteTextField.text {
+                    if noteText != "" {
+                        
+                        item.itemText = noteText
+                        
+                        //                        let note = ToDoListItem()
+                        //                        note.itemText = noteText
+                        
+                        self.saveObject(item)
+                        self.notes.append(item)
+                        self.updateDataSource()
+                    }
+                }
+            })
+            alert.addAction(saveAction)
+            self.present(alert, animated: true, completion: nil)
+        }))
+        present(actionSheet, animated: true, completion: nil)
     }
-    
 }
+
