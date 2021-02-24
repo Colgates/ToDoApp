@@ -10,11 +10,6 @@
 import UIKit
 import RealmSwift
 
-class ToDoListItem: Object {
-    @objc dynamic var title: String = ""
-    @objc dynamic var itemText: String = ""
-}
-
 class ViewController: UIViewController {
     
     let realm = try! Realm()
@@ -27,10 +22,11 @@ class ViewController: UIViewController {
         
         configuration.trailingSwipeActionsConfigurationProvider = { indexPath in
             let del = UIContextualAction(style: .destructive, title: "Delete") { action, view, completion in
-                
-                
-                
-                
+
+
+
+
+
                 completion(true)
             }
             return UISwipeActionsConfiguration(actions: [del])
@@ -97,14 +93,14 @@ class ViewController: UIViewController {
     
     func saveObject(_ object: Object) {
         do {
-            try! realm.write {
+            try realm.write {
                 realm.add(object)
             }
-            //        } catch {
-            //        print("Error while saving object")
-            //        }
+        } catch {
+            print("Error while saving object")
         }
     }
+    
     
     @objc private func didTapAddButton() {
         let alert = UIAlertController(title: "Add a new task", message: nil, preferredStyle: .alert)
@@ -136,9 +132,8 @@ extension ViewController: UICollectionViewDelegate {
         collectionView.deselectItem(at: indexPath, animated: true)
         
         
-        let actionSheet = UIAlertController(title: "", message: "", preferredStyle: .actionSheet)
+        let actionSheet = UIAlertController(title: "Actions", message: "What do you want to do?", preferredStyle: .actionSheet)
         actionSheet.addAction(UIAlertAction(title: "Delete", style: .destructive, handler: { action in
-            print("Delete")
             
             let item = self.notes[indexPath.row]
             do {
@@ -155,18 +150,11 @@ extension ViewController: UICollectionViewDelegate {
         }))
         
         actionSheet.addAction(UIAlertAction(title: "Edit", style: .default, handler: { action in
-            print("Edit")
-            
-            let item = ToDoListItem()
-            
-            //            item.itemText = self.notes[indexPath.row].itemText
-            
-            item.itemText = self.notes[indexPath.row].itemText
             
             let alert = UIAlertController(title: "Edit", message: nil, preferredStyle: .alert)
             
             alert.addTextField { (textField:UITextField) in
-                textField.text = item.itemText
+                textField.text = self.notes[indexPath.row].itemText
             }
             
             let saveAction = UIAlertAction(title: "Save", style: .default, handler: { (action) in
@@ -174,18 +162,25 @@ extension ViewController: UICollectionViewDelegate {
                 if let noteText = noteTextField.text {
                     if noteText != "" {
                         
-                        item.itemText = noteText
-                        
-                        //                        let note = ToDoListItem()
-                        //                        note.itemText = noteText
-                        
-                        self.saveObject(item)
-                        self.notes.append(item)
+                        let item = self.notes[indexPath.row]
+                        do {
+                            try self.realm.write() {
+                                item.itemText = noteText
+                            }
+                        } catch {
+                            print("Error updating item")
+                        }
+                        self.loadObjects()
                         self.updateDataSource()
                     }
                 }
             })
+            
+            let cancelAction = UIAlertAction(title: "Cancel", style: .destructive, handler: nil)
+            
+            alert.addAction(cancelAction)
             alert.addAction(saveAction)
+            
             self.present(alert, animated: true, completion: nil)
         }))
         present(actionSheet, animated: true, completion: nil)

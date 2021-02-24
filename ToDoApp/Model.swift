@@ -6,11 +6,13 @@
 //
 
 import Foundation
+import RealmSwift
 
 enum Section {
     case main
 }
-//
-//struct ToDoListItem: Hashable {
-//    var title: String
-//}
+
+class ToDoListItem: Object {
+    @objc dynamic var title: String = ""
+    @objc dynamic var itemText: String = ""
+}
