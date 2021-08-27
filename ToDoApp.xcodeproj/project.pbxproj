@@ -15,6 +15,7 @@
 		8D6A909125E4E1B5002C7577 /* Realm in Frameworks */ = {isa = PBXBuildFile; productRef = 8D6A909025E4E1B5002C7577 /* Realm */; };
 		8D6A909325E4E1B5002C7577 /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 8D6A909225E4E1B5002C7577 /* RealmSwift */; };
 		8DA5AF3A25E3961C00CAA890 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DA5AF3925E3961C00CAA890 /* Model.swift */; };
+		8DF933C526D8F41F00425F68 /* ViewControllerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF933C426D8F41F00425F68 /* ViewControllerViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +27,7 @@
 		8D5033892567BCD7002152C9 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		8D50338B2567BCD7002152C9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8DA5AF3925E3961C00CAA890 /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
+		8DF933C426D8F41F00425F68 /* ViewControllerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +68,7 @@
 				8D5033882567BCD7002152C9 /* LaunchScreen.storyboard */,
 				8D50338B2567BCD7002152C9 /* Info.plist */,
 				8D5033812567BCD5002152C9 /* ViewController.swift */,
+				8DF933C426D8F41F00425F68 /* ViewControllerViewModel.swift */,
 				8DA5AF3925E3961C00CAA890 /* Model.swift */,
 			);
 			path = ToDoApp;
@@ -149,6 +152,7 @@
 			files = (
 				8D5033822567BCD5002152C9 /* ViewController.swift in Sources */,
 				8D50337E2567BCD5002152C9 /* AppDelegate.swift in Sources */,
+				8DF933C526D8F41F00425F68 /* ViewControllerViewModel.swift in Sources */,
 				8D5033802567BCD5002152C9 /* SceneDelegate.swift in Sources */,
 				8DA5AF3A25E3961C00CAA890 /* Model.swift in Sources */,
 			);

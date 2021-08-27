@@ -5,19 +5,12 @@
 //  Created by Evgenii Kolgin on 20.11.2020.
 //
 import UIKit
-import RealmSwift
 
 class ViewController: UIViewController {
     
-    let realm = try! Realm()
-    
-    var notes = [ToDoListItem]()
-    
     private var collectionView: UICollectionView!
     
-    var dataSource: UICollectionViewDiffableDataSource<Section, ToDoListItem>!
-    
-    var snapshot: NSDiffableDataSourceSnapshot<Section, ToDoListItem>!
+    var viewModel = ViewControllerViewModel()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -27,91 +20,86 @@ class ViewController: UIViewController {
         title = "ToDoList"
         navigationController?.navigationBar.prefersLargeTitles = true
         
-        
         setupCollectionView()
-        collectionView.delegate = self
+        configureDataSource()
         
-        loadObjects()
-        updateDataSource()
+        viewModel.loadObjects()
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        view.addSubview(collectionView)
+        collectionView.frame = view.bounds
     }
     
     func setupCollectionView() {
-        var layoutConfig = UICollectionLayoutListConfiguration(appearance: .insetGrouped)
+        var layoutConfig = UICollectionLayoutListConfiguration(appearance: .sidebar)
         
-        layoutConfig.trailingSwipeActionsConfigurationProvider = { [unowned self] (indexPath) in
-            
-            guard let item = dataSource.itemIdentifier(for: indexPath) else {
-                return nil
-            }
+        layoutConfig.trailingSwipeActionsConfigurationProvider = { [weak self] indexPath in
+            guard let item = self?.viewModel.dataSource?.itemIdentifier(for: indexPath) else { return nil }
             
             let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { (action, view, completion) in
-                deleteSwipe(for: action, item: item)
+                self?.viewModel.deleteObject(item)
                 completion(true)
             }
             
-            //
             return UISwipeActionsConfiguration(actions: [deleteAction])
         }
         
-        layoutConfig.leadingSwipeActionsConfigurationProvider = { [unowned self] (indexPath) in
-            guard let item = dataSource.itemIdentifier(for: indexPath) else {
-                return nil
-            }
+        layoutConfig.leadingSwipeActionsConfigurationProvider = { [weak self] indexPath in
+            guard let item = self?.viewModel.dataSource?.itemIdentifier(for: indexPath) else { return nil }
             
-            let archiveAction = UIContextualAction(style: .normal, title: "Archived") { (action, view, completion) in
-                archiveSwipe(for: action, item: item)
+            let archiveAction = UIContextualAction(style: .normal, title: "Done") { (action, view, completion) in
+                self?.viewModel.toggleObject(item)
                 completion(true)
             }
             archiveAction.backgroundColor = .systemGreen
             return UISwipeActionsConfiguration(actions: [archiveAction])
         }
         
+        layoutConfig.headerMode = .supplementary
+        
         let listLayout = UICollectionViewCompositionalLayout.list(using: layoutConfig)
         collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: listLayout)
-        
-        view.addSubview(collectionView)
-        
-        collectionView.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            collectionView.topAnchor.constraint(equalTo: view.layoutMarginsGuide.topAnchor, constant: 0.0),
-            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 0.0),
-            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: 0.0),
-            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: 0.0),
-        ])
+        collectionView.delegate = self
+    }
+    
+    private func configureDataSource() {
         
         let cellRegistration = UICollectionView.CellRegistration<UICollectionViewListCell, ToDoListItem> { (cell, indexPath, item) in
             
-            var content = cell.defaultContentConfiguration()
-            content.text = item.itemText
-            cell.contentConfiguration = content
+            var configuration = cell.defaultContentConfiguration()
+            configuration.text = item.itemText
+            
+            if item.isDone {
+                configuration.image = UIImage(systemName: "checkmark.square")
+            } else {
+                configuration.image = UIImage(systemName: "square")
+            }
+            cell.contentConfiguration = configuration
         }
         
-        dataSource = UICollectionViewDiffableDataSource<Section, ToDoListItem>(collectionView: collectionView, cellProvider: { (collectionView: UICollectionView, indexPath: IndexPath, identifier: ToDoListItem) -> UICollectionViewCell? in
-            let cell = collectionView.dequeueConfiguredReusableCell(using: cellRegistration, for: indexPath, item: identifier)
-            // you can coondigure cell appearance here
-            return cell
-        })
-    }
-    
-    func updateDataSource() {
-        snapshot = NSDiffableDataSourceSnapshot<Section, ToDoListItem>()
-        snapshot.appendSections([.main])
-        snapshot.appendItems(notes, toSection: .main)
+        let headerRegistration = UICollectionView.SupplementaryRegistration<UICollectionViewListCell>(elementKind: UICollectionView.elementKindSectionHeader) { [unowned self] (headerView, elementKind, indexPath) in
+            
+            let headerItem = self.viewModel.dataSource?.snapshot().sectionIdentifiers[indexPath.section]
+            
+            var configuration = headerView.defaultContentConfiguration()
+            configuration.text = headerItem?.description()
+
+            configuration.textProperties.font = .boldSystemFont(ofSize: 16)
+            configuration.textProperties.color = .systemBlue
+            configuration.directionalLayoutMargins = .init(top: 20.0, leading: 0.0, bottom: 10.0, trailing: 0.0)
+            
+            headerView.contentConfiguration = configuration
+        }
         
-        dataSource.apply(snapshot,animatingDifferences: true)
-    }
-    
-    func loadObjects() {
-        notes = realm.objects(ToDoListItem.self).map({ $0 })
-    }
-    
-    func saveObject(_ object: Object) {
-        do {
-            try realm.write {
-                realm.add(object)
-            }
-        } catch {
-            print("Error while saving object")
+        viewModel.dataSource = UICollectionViewDiffableDataSource<Section, ToDoListItem>(collectionView: collectionView, cellProvider: { (collectionView: UICollectionView, indexPath: IndexPath, identifier: ToDoListItem) -> UICollectionViewCell? in
+            collectionView.dequeueConfiguredReusableCell(using: cellRegistration, for: indexPath, item: identifier)
+        })
+        
+        viewModel.dataSource?.supplementaryViewProvider = { (collectionView, elementKind, indexPath) -> UICollectionReusableView? in
+            collectionView.dequeueConfiguredReusableSupplementary(using: headerRegistration, for: indexPath)
         }
     }
     
@@ -121,107 +109,57 @@ class ViewController: UIViewController {
         alert.addTextField { (textField:UITextField) in
             textField.placeholder = "Enter your task"
         }
-        let saveAction = UIAlertAction(title: "Save", style: .default, handler: { (action) in
+        
+        let saveAction = UIAlertAction(title: "Save", style: .default, handler: { _ in
             let noteTextField = alert.textFields![0] as UITextField
             if let noteText = noteTextField.text {
                 if noteText != "" {
                     let note = ToDoListItem()
                     note.itemText = noteText
-                    self.saveObject(note)
-                    self.notes.append(note)
-                    self.updateDataSource()
+                    print(note.isDone)
+                    self.viewModel.saveObject(note)
                 }
             }
         })
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        alert.addAction(cancelAction)
         alert.addAction(saveAction)
         present(alert, animated: true, completion: nil)
     }
 }
 
-//MARK: - TableView Delegate
+//MARK: - UICollectionViewDelegate
 extension ViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        
-        guard let selectedItem = dataSource.itemIdentifier(for: indexPath) else {
+
+        guard let selectedItem = viewModel.dataSource?.itemIdentifier(for: indexPath) else {
             collectionView.deselectItem(at: indexPath, animated: true)
             return
         }
-        
-        let actionSheet = UIAlertController(title: selectedItem.itemText, message: "What do you want to do?", preferredStyle: .actionSheet)
-        
-        actionSheet.addAction(UIAlertAction(title: "Edit", style: .default, handler: { action in
-            
-            let alert = UIAlertController(title: "Edit", message: nil, preferredStyle: .alert)
-            
-            alert.addTextField { (textField:UITextField) in
-                textField.text = self.notes[indexPath.row].itemText
-            }
-            
-            let saveAction = UIAlertAction(title: "Save", style: .default, handler: { (action) in
-                let noteTextField = alert.textFields![0] as UITextField
-                if let noteText = noteTextField.text {
-                    if noteText != "" {
-                        
-                        let item = self.notes[indexPath.row]
-                        do {
-                            try self.realm.write() {
-                                item.itemText = noteText
-                            }
-                        } catch {
-                            print("Error updating item")
-                        }
-                        self.loadObjects()
-                        self.updateDataSource()
-                    }
-                }
-            })
-            let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: { (_) in
-                collectionView.deselectItem(at: indexPath, animated: true)
-            })
-            
-            alert.addAction(cancelAction)
-            alert.addAction(saveAction)
-            
-            self.present(alert, animated: true, completion: nil)
-        }))
-        
-        
-        actionSheet.addAction(UIAlertAction(title: "Delete", style: .destructive, handler: { action in
-            
-            let item = self.notes[indexPath.row]
-            do {
-                try self.realm.write {
-                    self.realm.delete(item)
-                }
-            } catch  {
-                
-            }
-            self.loadObjects()
-            self.updateDataSource()
-        }))
-        
-        actionSheet.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: { (_) in
-            collectionView.deselectItem(at: indexPath, animated: true)
-        }))
-        present(actionSheet, animated: true, completion: nil)
-    }
-}
 
-extension ViewController {
-    func deleteSwipe(for action: UIContextualAction, item: ToDoListItem) {
-        do {
-            try self.realm.write {
-                self.realm.delete(item)
-            }
-        } catch  {
-            
+        let alert = UIAlertController(title: "Edit", message: "", preferredStyle: .alert)
+
+        alert.addTextField { (textField:UITextField) in
+            textField.text = selectedItem.itemText
         }
-        self.loadObjects()
-        self.updateDataSource()
-    }
-    
-    func archiveSwipe(for action: UIContextualAction, item: ToDoListItem) {
-        
+
+        let saveAction = UIAlertAction(title: "Save", style: .default, handler: { _ in
+            let noteTextField = alert.textFields![0] as UITextField
+            if let noteText = noteTextField.text {
+                if noteText != "" {
+                    self.viewModel.updateObject(selectedItem, text: noteText)
+                }
+            }
+        })
+
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: { _ in
+            collectionView.deselectItem(at: indexPath, animated: true)
+        })
+
+        alert.addAction(cancelAction)
+        alert.addAction(saveAction)
+
+        self.present(alert, animated: true, completion: nil)
     }
 }
-
